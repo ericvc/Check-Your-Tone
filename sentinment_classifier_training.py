@@ -1,7 +1,5 @@
 import pandas as pd
 import pickle
-import re
-from nltk.corpus import stopwords
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -11,6 +9,7 @@ from keras.models import Sequential
 from keras import layers
 from keras.optimizers import Adam
 from datetime import datetime
+from preprocessing import pre_process_sentence
 
 
 # ## Read in data set used for TRAINING
@@ -55,51 +54,6 @@ df = pd.read_csv("data/imdb_reviews_labeled.csv").sample(frac=1)
 sentences = df['sentence.lower'].values
 y = df['label'].values
 
-
-## Pre-process review text
-stop_words = stopwords.words("english")
-def REPLACE_STOP_WORDS_NO_SPACE(x):
-    # list comprehension to split input string into list of words, then evaluate each word
-    words = [word for word in x.split() if word not in stop_words]
-    # recombine the list of remaining words into a string
-    words_no_stop = " ".join(words)
-    return words_no_stop
-
-
-def REPLACE_ELLIPSES_WITH_SPACE(x):
-    return re.compile("\\.{2,}").sub(" ", x)
-
-
-def REPLACE_CHARACTER_NO_SPACE(x):
-    return re.compile("[\\.\\-;:!\'?,\"()\[\]\/]").sub("", x)
-
-
-def REPLACE_BLANK_START_NO_SPACE(x):
-    return re.compile("^\\s+").sub("", x)
-
-
-def REPLACE_BLANK_END_NO_SPACE(x):
-    return re.compile("\\s+$").sub("", x)
-
-
-def REPLACE_BLANK_WITH_SPACE(x):
-    return re.compile("\\s{2,}").sub(" ", x)
-
-
-def REPLACE_FORMAT_NO_SPACE(x):
-    return re.compile("&\\w").sub(" ", x)
-
-
-def pre_process_sentence(sentences):
-    sentences = [REPLACE_ELLIPSES_WITH_SPACE(line) for line in sentences]
-    sentences = [REPLACE_CHARACTER_NO_SPACE(line) for line in sentences]
-    sentences = [REPLACE_FORMAT_NO_SPACE(line) for line in sentences]
-    sentences = [REPLACE_BLANK_START_NO_SPACE(line) for line in sentences]
-    sentences = [REPLACE_BLANK_END_NO_SPACE(line) for line in sentences]
-    sentences = [REPLACE_BLANK_WITH_SPACE(line) for line in sentences]
-    sentences = [REPLACE_STOP_WORDS_NO_SPACE(line) for line in sentences]
-
-    return sentences
 
 # Clean review text - takes a few moments to complete
 X_processed = pre_process_sentence(sentences)

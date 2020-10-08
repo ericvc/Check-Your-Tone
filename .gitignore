@@ -2,3 +2,7 @@
 data
 TensorFlow Models/model_fit_conv_20201007_233431
 TensorFlow Models/model_fit_lstm_20201008_003745
+amazon_tokens.json
+media
+README.Rmd
+__pycache__

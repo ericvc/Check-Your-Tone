@@ -1,0 +1,9 @@
+boto3
+numpy
+keras
+tensorflow==2.2
+datetime
+pandas
+nltk
+matplotlib
+RPi.GPIO

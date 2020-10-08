@@ -15,3 +15,10 @@ Future Directions
 
 -   A complete guide with step-by-step directions for building the project.
 -   Downloadable disk image with all software files and dependencies pre-configured.
+
+Feature Ideas
+-------------
+
+-   Indicator LED should blink while fetching ASR transcript. Might need to use `asyncio`.
+-   Select length of recording using push button (1 tap, 2 taps, etc.).
+-   Use word sentiment lexicon to identify the valence of individual words returned in the transcript.

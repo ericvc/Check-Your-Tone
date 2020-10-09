@@ -1,7 +1,7 @@
 boto3
 numpy
 keras
-tensorflow==2.2
+tensorflow>=2.0.0
 datetime
 pandas
 nltk

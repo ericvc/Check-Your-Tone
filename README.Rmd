@@ -25,7 +25,7 @@ All code for this project is written for Python 3.6+.
 Once the Raspberry Pi OS has been installed, download the file `setup_pi.sh` and run from a terminal window. This project is tested on a Raspberry Pi 3 Model B v1.2 (more detailed information can be found in `system.txt`).
 
 ```
-bash setup_pi.sh
+bash config/setup_pi.sh
 ```
 * Installs `shutdown_button.py` script, which assumes a shutdown button is connected to pin 22 (BCM)
 
@@ -55,5 +55,5 @@ Coming soon
 ## Feature Ideas
 
 * Indicator LED should blink while fetching ASR transcript. Might need to use `asyncio`.
-* Select length of recording using push button (1 tap, 2 taps, etc.).
 * Use word sentiment lexicon to identify the valence of individual words returned in the transcript.
+* Record audio as long as tactile button is held (combining numerous small files)

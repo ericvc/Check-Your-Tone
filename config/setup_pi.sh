@@ -19,6 +19,15 @@
 # Make sure you have configured your internet connection before running!
 
 #################################################################################
+# Script Variables (edit for custom configuration)
+#################################################################################
+
+PROJDIR="/home/pi/Projects"  # Projects Directory
+PROJNAME="Check-Your-Tone" #  Project Name
+HOMEDIR="/home/pi/" #  Home Directory
+
+
+#################################################################################
 # Updates
 #################################################################################
 sudo apt-get update
@@ -28,7 +37,7 @@ sudo apt-get upgrade
 #################################################################################
 # Create project directory
 #################################################################################
-mkdir /home/pi/Projects/Check-Your-Tone
+mkdir "${PROJDIR}/${PROJNAME}"
 
 
 #################################################################################
@@ -45,9 +54,6 @@ git config --global user.email "your.email@mail.com"
 
 #Check configuration
 git config --list
-
-#Clone project repository to local storage
-git clone https://github.com/ericvc/Check-Your-Tone /home/pi/Projects/Check-Your-Tone
 
 
 #################################################################################
@@ -80,10 +86,10 @@ sudo -H pip3 install tensorflow-2.2.0-cp37-cp37m-linux_armv7l.whl --ignore-insta
 sudo apt-get -y install RPI.GPIO
 
 #Install all over libraries with pip
-pip3 install -r /home/pi/Projects/Check-Your-Tone/requirements.txt
+pip3 install -r "${PROJDIR}/${PROJNAME}/requirements.txt"
 
 #Download datasets
-python3 config/dl_stopwords.py
+python3 "${PROJDIR}/${PROJNAME}/config/dl_stopwords.py"
 
 
 #################################################################################
@@ -104,18 +110,9 @@ aws --version
 #################################################################################
 
 #Move shutdown button script
-sudo cp /home/pi/Projects/Check-Your-Tone/config/shutdown_button.py /usr/local/bin/
-sudo chmod +x /usr/local/bin/shutdown_button.py
-
-#Move shutdown listener script to startup directory
-sudo cp /home/pi/Projects/Check-Your-Tone/config/listen-for-shutdown.sh /etc/init.d/
-sudo chmod +x /etc/init.d/listen-for-shutdown.sh
-
-#Register script to run on boot
-sudo update-rc.d listen-for-shutdown.sh defaults
-
-#Initialize script
-sudo /etc/init.d/listen-for-shutdown.sh start
+sudo cp "${PROJDIR}/${PROJNAME}/config/shutdown_button.py" /etc/init.d/
+sudo chmod +x /etc/init.d/shutdown_button.py
+sudo update-rc.d shutdown_button.py defaults
 
 
 #################################################################################
@@ -123,8 +120,29 @@ sudo /etc/init.d/listen-for-shutdown.sh start
 #################################################################################
 
 #Move shutdown button script
-sudo cp /home/pi/Projects/Check-Your-Tone/config/.asoundrc /home/pi
+sudo cp "${PROJDIR}/${PROJNAME}/config/.asoundrc" "${HOMEDIR}"
 sudo chmod +x /home/pi/.asoundrc
+
+
+#################################################################################
+# Install FFmpeg
+#################################################################################
+
+# Run install script (may take some time)
+sudo bash "${PROJDIR}/${PROJNAME}/config/ffmpeg_install.sh"
+
+
+#################################################################################
+# Install CHECK YOUR TONE!
+#################################################################################
+
+#Clone project repository to local storage
+git clone https://github.com/ericvc/Check-Your-Tone "${PROJDIR}/${PROJNAME}"
+
+#Configure program script to run at startup
+sudo cp "${PROJDIR}/${PROJNAME}/check_your_tone.py" /etc/init.d/
+sudo chmod +x /etc/init.d/check_your_tone.py
+sudo update-rc.d check_your_tone.py defaults
 
 
 #################################################################################

@@ -7,7 +7,7 @@ import json
 from py.upload_to_aws import upload_to_aws
 
 
-# GPIO pin settings
+## GPIO pin settings
 PUSH_BUTTON = 8
 INDICATOR_LED = 36
 NEGATIVE_LED = 11
@@ -15,7 +15,7 @@ NEUTRAL_LED = 16
 POSITIVE_LED = 32
 
 
-# GPIO options
+## GPIO options
 GPIO.setmode(GPIO.BOARD)  # Use physical pin numbering scheme
 GPIO.setwarnings(False)  # Disable warnings
 GPIO.setup(PUSH_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Push-button input (initial value is on)
@@ -25,7 +25,7 @@ GPIO.setup(NEUTRAL_LED, GPIO.OUT)  # LED output (neutral)
 GPIO.setup(POSITIVE_LED, GPIO.OUT)  # LED output (positive)
 
 
-# Detect when tactile button is pressed, run function when it is
+## Detect when tactile button is pressed, run function when it is
 def event_listener():
     GPIO.add_event_detect(PUSH_BUTTON,
                           GPIO.FALLING,
@@ -33,7 +33,7 @@ def event_listener():
                           bouncetime=500)
     
     
-# LED control function
+## LED control function
 def turn_led_on(LED: int, length: float=10.0):
     """
     :param LED: GPIO pin connected to a diode
@@ -52,7 +52,7 @@ def turn_led_on(LED: int, length: float=10.0):
         GPIO.output(LED, False)
 
 
-
+## Record audio and save to local storage
 def record_audio():
     """
     :param channel: GPIO pin connected to an LED.
@@ -72,8 +72,8 @@ def record_audio():
     # Recording for 15 seconds, adding timestamp to the filename and sending file to S3
     file_name = "audio_recording_%s".format(np.round(time.time(), 3))
     bucket_name = "checkyourtoneproject"
-    rlen = 10  # length of recording
-    cmd = f'arecord /home/pi/Projects/Check-Your-Tone/audio/test.wav -D sysdefault:CARD=2 -d {rlen} -f cd -t wav'
+    rlen = 20  # length of recording
+    cmd = f'arecord /home/pi/Projects/Check-Your-Tone/audio/{file_name}.wav -D sysdefault:CARD=2 -d {rlen} -f cd -t wav'
     os.system(cmd)
     
     print("\nRecording ended...\nUploading audio file to AWS.\n")
@@ -83,24 +83,23 @@ def record_audio():
     GPIO.output(NEGATIVE_LED, False)
     GPIO.output(POSITIVE_LED, False)
     
-    # Enable event detection
+    # Re-enable event detection
     event_listener()
     
+    return bucket_name, file_name
+    
 
-def task_handler(bucket_name="checkyourtoneproject", file_name="test.wav"):
+## Function called by the event watcher when an edge event is detected
+def task_handler(bucket_name: str, file_name: str):
     """
     :return: Nothing is returned.
     """
     # Start time
     start_time = time.time()
-
-    # Get audio recording
-    record_audio()
     
-    # Upload recording to AWS project bucket
-    file_name = "test.wav"
+    # Get audio recording and upload to AWS project bucket"
+    bucket_name, file_name = record_audio()
     file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}"
-    bucket_name = "checkyourtoneproject"
     upload_to_aws(bucket_name=bucket_name, file_path=file_path, s3_file_name=file_name)
 
     # Get transcript from AWS
@@ -129,7 +128,7 @@ def task_handler(bucket_name="checkyourtoneproject", file_name="test.wav"):
         turn_led_on(POSITIVE_LED)
 
 
-# Initialize event listener
+## Initialize event listener
 event_listener()
 
 

@@ -1,3 +1,5 @@
+# /etc/init.d/shutdown_button.py
+
 import RPi.GPIO as GPIO
 import subprocess
 

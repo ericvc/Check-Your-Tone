@@ -10,7 +10,7 @@ import pickle
 from keras.preprocessing.sequence import pad_sequences
 
 
-# AWS Authentication Settings
+## AWS Authentication Settings
 with open("/home/pi/Projects/Check-Your-Tone/amazon_tokens.json") as f:
     keys = json.load(f)
 
@@ -101,7 +101,7 @@ class RunTranscriptionJob:
         trained model.
         :return: A floating point value indicating whether the input skews negative (<=0.5) or positive (>0.5).
         """
-        # Ensure transcript exists
+
         input_X = self.transcript_tokenized
 
         ## RNN predictions
@@ -120,7 +120,7 @@ class RunTranscriptionJob:
         trained model.
         :return: A floating point value indicating whether the input skews negative (<=0.5) or positive (>0.5).
         """
-        
+
         input_X = self.transcript_tokenized
 
         ## CNN predictions

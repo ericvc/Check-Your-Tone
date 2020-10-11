@@ -12,11 +12,11 @@
 # ============================================================================= #
 #################################################################################
 
-
-# To execture this setup script, run the following from a terminal window in the
+# To execute this setup script, run the following from a terminal window in the
 # same directory as this file: bash setup_py.sh
 #
 # Make sure you have configured your internet connection before running!
+
 
 #################################################################################
 # Script Variables (edit for custom configuration)
@@ -28,31 +28,36 @@ HOMEDIR="/home/pi/" #  Home Directory
 
 
 #################################################################################
-# Updates
+# Install system updates if available
 #################################################################################
 sudo apt-get update
 sudo apt-get upgrade
 
 
 #################################################################################
-# Create project directory
+# Create project directories
 #################################################################################
+
+# Main directory
 mkdir "${PROJDIR}/${PROJNAME}"
+
+# Temporary audio storage
+mkdir "${PROJDIR}/${PROJNAME}/audio"
 
 
 #################################################################################
 # Install Git Software for Version Control
 #################################################################################
 
-#Install
+# Install
 sudo apt update
 sudo apt install -y git
 
-#Configure
+# Configure
 git config --global user.name "your.username"
 git config --global user.email "your.email@mail.com"
 
-#Check configuration
+# Check configuration
 git config --list
 
 
@@ -82,13 +87,13 @@ sudo -H pip3 install tensorflow-2.2.0-cp37-cp37m-linux_armv7l.whl --ignore-insta
 # Install Python Libraries
 #################################################################################
 
-#Install RPi.GPIO
+# Install RPi.GPIO
 sudo apt-get -y install RPI.GPIO
 
-#Install all over libraries with pip
+# Install all over libraries with pip
 pip3 install -r "${PROJDIR}/${PROJNAME}/requirements.txt"
 
-#Download datasets
+# Download datasets
 python3 "${PROJDIR}/${PROJNAME}/config/dl_stopwords.py"
 
 
@@ -98,10 +103,10 @@ python3 "${PROJDIR}/${PROJNAME}/config/dl_stopwords.py"
 
 pip3 install awscli --upgrade --user
 
-#Set AWS CLI executable as PATH variable
-export PATH=/home/pi/.local/bin:$PATH
+# Set AWS CLI executable as PATH variable
+export "PATH=${HOMEDIR}.local/bin:${PATH}"
 
-#Confirm installation
+# Confirm installation
 aws --version
 
 
@@ -109,7 +114,7 @@ aws --version
 # Install Shutdown Button Script
 #################################################################################
 
-#Move shutdown button script
+# Move shutdown button script
 sudo cp "${PROJDIR}/${PROJNAME}/config/shutdown_button.py" /etc/init.d/
 sudo chmod +x /etc/init.d/shutdown_button.py
 sudo update-rc.d shutdown_button.py defaults
@@ -119,30 +124,37 @@ sudo update-rc.d shutdown_button.py defaults
 # Configure Microphone and Speaker Settings (may require additional tweaking)
 #################################################################################
 
-#Move shutdown button script
+# Move shutdown button script
 sudo cp "${PROJDIR}/${PROJNAME}/config/.asoundrc" "${HOMEDIR}"
 sudo chmod +x /home/pi/.asoundrc
-
-
-#################################################################################
-# Install FFmpeg
-#################################################################################
-
-# Run install script (may take some time)
-sudo bash "${PROJDIR}/${PROJNAME}/config/ffmpeg_install.sh"
 
 
 #################################################################################
 # Install CHECK YOUR TONE!
 #################################################################################
 
-#Clone project repository to local storage
+# Clone project repository to local storage
 git clone https://github.com/ericvc/Check-Your-Tone "${PROJDIR}/${PROJNAME}"
 
-#Configure program script to run at startup
+# Configure program script to run at startup
 sudo cp "${PROJDIR}/${PROJNAME}/check_your_tone.py" /etc/init.d/
 sudo chmod +x /etc/init.d/check_your_tone.py
 sudo update-rc.d check_your_tone.py defaults
+
+
+#################################################################################
+# Install libraries for media file encoding and editing
+#################################################################################
+
+# LAME
+sudo apt-get install -y libmp3lame-dev
+sudo apt-get install -y lame
+
+# sox
+sudo apt-get install -y sox
+
+# FFmpeg (may take some time to download and compile)
+sudo bash "${PROJDIR}/${PROJNAME}/config/ffmpeg_install.sh"
 
 
 #################################################################################
@@ -161,4 +173,3 @@ sudo update-rc.d check_your_tone.py defaults
 #################################################################################
 # End of script.
 #################################################################################
-

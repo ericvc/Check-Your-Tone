@@ -7,6 +7,10 @@ import json
 from py.upload_to_aws import upload_to_aws
 
 
+## Suppress warnings from numpy
+np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning) 
+
+
 ## GPIO pin settings
 PUSH_BUTTON = 8
 INDICATOR_LED = 36
@@ -70,13 +74,16 @@ def record_audio():
     print("Recording started...\n")
 
     # Recording for 15 seconds, adding timestamp to the filename and sending file to S3
-    file_name = "audio_recording_%s".format(np.round(time.time(), 3))
+    frmt = "mp3"
+    file_name = f"audio_recording_{np.round(time.time(), 3)}".replace(".","_")
+    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}"
     bucket_name = "checkyourtoneproject"
-    rlen = 20  # length of recording
-    cmd = f'arecord /home/pi/Projects/Check-Your-Tone/audio/{file_name}.wav -D sysdefault:CARD=2 -d {rlen} -f cd -t wav'
+    rlen = 15  # length of recording
+    bit_rate = 192 # MP3 encoding bit rate
+    cmd = f"arecord -f cd -t raw -d {rlen} -D plughw:2,0 | lame -r -b {bit_rate} - {file_path}.{frmt}"
     os.system(cmd)
-    
-    print("\nRecording ended...\nUploading audio file to AWS.\n")
+
+    print("\nRecording ended...\n\nUploading audio file to AWS.\n")
 
     # Turn off recording indicator LED
     GPIO.output(NEUTRAL_LED, False)
@@ -90,7 +97,7 @@ def record_audio():
     
 
 ## Function called by the event watcher when an edge event is detected
-def task_handler(bucket_name: str, file_name: str):
+def task_handler():
     """
     :return: Nothing is returned.
     """
@@ -99,17 +106,21 @@ def task_handler(bucket_name: str, file_name: str):
     
     # Get audio recording and upload to AWS project bucket"
     bucket_name, file_name = record_audio()
-    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}"
+    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}.wav"
     upload_to_aws(bucket_name=bucket_name, file_path=file_path, s3_file_name=file_name)
 
     # Get transcript from AWS
     transcript = RunTranscriptionJob(bucket_name=bucket_name, file_name=file_name)
     transcript.get_transcript()
-    predicted_sentiment = np.round(transcript.predict_ensemble(), 2)
+
+    # Predict sentiment
+    y_cnn, y_rnn = transcript.predict_ensemble()
+    y_pred = np.mean([y_cnn, y_rnn])
+    predicted_sentiment = np.round(y_pred, 3)
 
     # How long did the process take?
     task_id = transcript.job_name
-    task_time = time.time() - start_time
+    task_time = np.round(time.time() - start_time)
 
     # Report status
     if predicted_sentiment <= 0.33:
@@ -135,7 +146,10 @@ event_listener()
 try:
     # Main program loop
     while True:
-        turn_led_on(INDICATOR_LED, 7.0)
+        GPIO.output(INDICATOR_LED, True)
+        time.sleep(7.0)
+        GPIO.output(INDICATOR_LED, True)
+        time.sleep(0.5)
         
 except KeyboardInterrupt:
     print("Check Your Tone! closed using keyboard exit command.")

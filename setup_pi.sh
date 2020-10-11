@@ -3,10 +3,10 @@
 #################################################################################
 # ============================================================================= #
 # |-------------------------------CHECK YOUR TONE-----------------------------| #
-# |	       A Speech-to-Text Sentiment Analyzer for Raspberry Pi	      | #
-# |									      | #
-# |	                Raspberry Pi Configuration Script		      | #
-# |									      | #
+# |           A Speech-to-Text Sentiment Analyzer for Raspberry Pi            | #
+# |                                                                           | #
+# |                    Raspberry Pi Configuration Script                      | #
+# |                                                                           | #
 # |         10.09.2020 - Started install from NOOBS v3.5 (09.15.2020)         | #
 # |---------------------------------------------------------------------------| #
 # ============================================================================= #
@@ -17,6 +17,13 @@
 # same directory as this file: bash setup_py.sh
 #
 # Make sure you have configured your internet connection before running!
+
+#################################################################################
+# Updates
+#################################################################################
+sudo apt-get update
+sudo apt-get upgrade
+
 
 #################################################################################
 # Create project directory
@@ -75,6 +82,9 @@ sudo apt-get -y install RPI.GPIO
 #Install all over libraries with pip
 pip3 install -r /home/pi/Projects/Check-Your-Tone/requirements.txt
 
+#Download datasets
+python3 config/dl_stopwords.py
+
 
 #################################################################################
 # Download, Install, and Configure Amazon Web Services CLI
@@ -94,11 +104,11 @@ aws --version
 #################################################################################
 
 #Move shutdown button script
-sudo mv /home/pi/Projects/Check-Your-Tone/py/shutdown_button.py /usr/local/bin/
+sudo cp /home/pi/Projects/Check-Your-Tone/config/shutdown_button.py /usr/local/bin/
 sudo chmod +x /usr/local/bin/shutdown_button.py
 
 #Move shutdown listener script to startup directory
-sudo mv listen-for-shutdown.sh /etc/init.d/
+sudo cp /home/pi/Projects/Check-Your-Tone/config/listen-for-shutdown.sh /etc/init.d/
 sudo chmod +x /etc/init.d/listen-for-shutdown.sh
 
 #Register script to run on boot
@@ -106,4 +116,31 @@ sudo update-rc.d listen-for-shutdown.sh defaults
 
 #Initialize script
 sudo /etc/init.d/listen-for-shutdown.sh start
+
+
+#################################################################################
+# Configure Microphone and Speaker Settings (may require additional tweaking)
+#################################################################################
+
+#Move shutdown button script
+sudo cp /home/pi/Projects/Check-Your-Tone/config/.asoundrc /home/pi
+sudo chmod +x /home/pi/.asoundrc
+
+
+#################################################################################
+# Install remote desktop service (optional). Undo line comment to run.
+#################################################################################
+
+# Once installed, connect to this device using a remote desktop client
+
+# Install
+#sudo apt-get install -y xrdp
+
+# Get local IP address
+#hostname -I 
+
+
+#################################################################################
+# End of script.
+#################################################################################
 

@@ -3,30 +3,36 @@ import RPi.GPIO as GPIO
 import time
 import numpy as np
 from py.RunTranscriptionJob import RunTranscriptionJob
-
-
-AWS_ACCESS_KEY_ID = keys["ACCESS"]
-AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
+import json
+from py.upload_to_aws import upload_to_aws
 
 
 # GPIO pin settings
-PUSH_BUTTON = 10
-INDICATOR_LED = 17
-NEGATIVE_LED = 16
-NEUTRAL_LED = 22
+PUSH_BUTTON = 8
+INDICATOR_LED = 36
+NEGATIVE_LED = 11
+NEUTRAL_LED = 16
 POSITIVE_LED = 32
 
 
 # GPIO options
-GPIO.setmode(GPIO.BCM)  # Use physical pin numbering scheme
+GPIO.setmode(GPIO.BOARD)  # Use physical pin numbering scheme
 GPIO.setwarnings(False)  # Disable warnings
-GPIO.setup(PUSH_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Push-button input (initial value is off)
-GPIO.setup(INDICATOR_LED, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)  # Status indicator LED output
-GPIO.setup(NEGATIVE_LED, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)  # LED output (negative)
-GPIO.setup(NEUTRAL_LED, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)  # LED output (neutral)
-GPIO.setup(POSITIVE_LED, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)  # LED output (positive)
+GPIO.setup(PUSH_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Push-button input (initial value is on)
+GPIO.setup(INDICATOR_LED, GPIO.OUT)  # Status indicator LED output
+GPIO.setup(NEGATIVE_LED, GPIO.OUT)  # LED output (negative)
+GPIO.setup(NEUTRAL_LED, GPIO.OUT)  # LED output (neutral)
+GPIO.setup(POSITIVE_LED, GPIO.OUT)  # LED output (positive)
 
 
+# Detect when tactile button is pressed, run function when it is
+def event_listener():
+    GPIO.add_event_detect(PUSH_BUTTON,
+                          GPIO.FALLING,
+                          callback=lambda x: task_handler(),
+                          bouncetime=500)
+    
+    
 # LED control function
 def turn_led_on(LED: int, length: float=10.0):
     """
@@ -47,26 +53,41 @@ def turn_led_on(LED: int, length: float=10.0):
 
 
 
-def record_audio(channel):
+def record_audio():
     """
     :param channel: GPIO pin connected to an LED.
     :return: Nothing is returned.
     """
+    
+    # Disable event detection while function is running
+    GPIO.remove_event_detect(PUSH_BUTTON)
+    
     # Turn on recording indicator LED
-    GPIO.output(channel, True)
+    GPIO.output(NEUTRAL_LED, True)
+    GPIO.output(NEGATIVE_LED, True)
+    GPIO.output(POSITIVE_LED, True)
+    
+    print("Recording started...\n")
 
     # Recording for 15 seconds, adding timestamp to the filename and sending file to S3
     file_name = "audio_recording_%s".format(np.round(time.time(), 3))
     bucket_name = "checkyourtoneproject"
-    cmd = f'arecord /home/pi/Projects/CYT/{file_name}.wav -D sysdefault:CARD=1 -d 15 -r 48000;' \
-          f'aws s3 cp /home/pi/Projects/CYT/{file_name}.wav s3://{bucket_name}'
+    rlen = 10  # length of recording
+    cmd = f'arecord /home/pi/Projects/Check-Your-Tone/audio/test.wav -D sysdefault:CARD=2 -d {rlen} -f cd -t wav'
     os.system(cmd)
+    
+    print("\nRecording ended...\nUploading audio file to AWS.\n")
 
     # Turn off recording indicator LED
-    GPIO.output(channel, False)
+    GPIO.output(NEUTRAL_LED, False)
+    GPIO.output(NEGATIVE_LED, False)
+    GPIO.output(POSITIVE_LED, False)
+    
+    # Enable event detection
+    event_listener()
+    
 
-
-def task_handler():
+def task_handler(bucket_name="checkyourtoneproject", file_name="test.wav"):
     """
     :return: Nothing is returned.
     """
@@ -74,12 +95,18 @@ def task_handler():
     start_time = time.time()
 
     # Get audio recording
-    record_audio(channel=INDICATOR_LED)
+    record_audio()
+    
+    # Upload recording to AWS project bucket
+    file_name = "test.wav"
+    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}"
+    bucket_name = "checkyourtoneproject"
+    upload_to_aws(bucket_name=bucket_name, file_path=file_path, s3_file_name=file_name)
 
     # Get transcript from AWS
     transcript = RunTranscriptionJob(bucket_name=bucket_name, file_name=file_name)
     transcript.get_transcript()
-    predicted_sentiment = np.round(transcript.ensemble_prediction(), 2)
+    predicted_sentiment = np.round(transcript.predict_ensemble(), 2)
 
     # How long did the process take?
     task_id = transcript.job_name
@@ -102,15 +129,15 @@ def task_handler():
         turn_led_on(POSITIVE_LED)
 
 
-# Detect when push button is pressed, run function when it is
-GPIO.add_event_detect(PUSH_BUTTON, GPIO.RISING, callback=task_handler, bouncetime=100)
+# Initialize event listener
+event_listener()
 
 
 try:
     # Main program loop
     while True:
-        turn_led_on(INDICATOR_LED, 2.0)
-
+        turn_led_on(INDICATOR_LED, 7.0)
+        
 except KeyboardInterrupt:
     print("Check Your Tone! closed using keyboard exit command.")
 

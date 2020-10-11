@@ -5,18 +5,24 @@ import json
 from datetime import datetime
 import tensorflow as tf
 import numpy as np
-from preprocessing import pre_process_sentence
+from py.preprocessing import pre_process_sentence
 import pickle
 from keras.preprocessing.sequence import pad_sequences
 
 
-class RunTranscriptionJob:
+# AWS Authentication Settings
+with open("/home/pi/Projects/Check-Your-Tone/amazon_tokens.json") as f:
+    keys = json.load(f)
 
+AWS_ACCESS_KEY_ID = keys["ACCESS"]
+AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
+
+
+class RunTranscriptionJob:
     def __init__(self, bucket_name, file_name):
-        self.job_uri = f'https://s3.amazonaws.com/{bucket_name}{file_name}'
+        self.job_uri = f'https://{bucket_name}.s3.us-west-1.amazonaws.com/{file_name}'
         self.job_name = 'check_your_tone_{:%Y%m%d_%H%M%S}'.format(datetime.utcnow())
         self.load_tokenizer()
-        self.tokenize_transcript()
         self.load_rnn()
         self.load_cnn()
 
@@ -41,31 +47,35 @@ class RunTranscriptionJob:
         transcribe = boto3.client('transcribe',
                                   aws_access_key_id=AWS_ACCESS_KEY_ID,
                                   aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-                                  region_name='us-west-2')
+                                  region_name='us-west-1')
 
         # Run job
         transcribe.start_transcription_job(TranscriptionJobName=self.job_name,
                                            Media={'MediaFileUri': self.job_uri},
-                                           MediaFormat='mp3',
+                                           MediaFormat='wav',
                                            LanguageCode='en-US')
 
         # Check job status
+        counter = 0
         while True:
+            counter += 1
             status = transcribe.get_transcription_job(TranscriptionJobName=self.job_name)
             if status['TranscriptionJob']['TranscriptionJobStatus'] == "FAILED":
                 print("Transcription failed.")
                 break
 
             elif status['TranscriptionJob']['TranscriptionJobStatus'] == 'COMPLETED':
-                response = urllib.urlopen(status['TranscriptionJob']['Transcript']['TranscriptFileUri'])
+                response = urllib.request.urlopen(status['TranscriptionJob']['Transcript']['TranscriptFileUri'])
                 data = json.loads(response.read())
                 self.transcript = data['results']['transcripts'][0]['transcript']
                 self.tokenize_transcript()
                 print(self.transcript)
+                break
 
             else:
-                print("Transcript is not ready...")
-                time.sleep(0.5)
+                if counter % 10 == 0:
+                    print("Transcript is not ready...")
+                time.sleep(1)
 
     def load_rnn(self):
         """
@@ -85,14 +95,13 @@ class RunTranscriptionJob:
         # Allocate memory for model input tensors
         self.cnn_model.allocate_tensors()
 
-    def predict_sentiment_rnn(self):
+    def predict_rnn(self):
         """
         From the transcript returned by AWS, convert raw text to tokenized vector, and predict sentiment from the
         trained model.
         :return: A floating point value indicating whether the input skews negative (<=0.5) or positive (>0.5).
         """
         # Ensure transcript exists
-        assert self.transcript_tokenized
         input_X = self.transcript_tokenized
 
         ## RNN predictions
@@ -105,14 +114,13 @@ class RunTranscriptionJob:
         self.rnn_prediction = self.rnn_model.get_tensor(output_details[0]['index'])
         return self.rnn_prediction[0][0]  # Between 0 and 1
 
-    def predict_sentiment_cnn(self):
+    def predict_cnn(self):
         """
         From the transcript returned by AWS, convert raw text to tokenized vector, and predict sentiment from the
         trained model.
         :return: A floating point value indicating whether the input skews negative (<=0.5) or positive (>0.5).
         """
-        # Ensure transcript exists
-        assert self.transcript_tokenized
+        
         input_X = self.transcript_tokenized
 
         ## CNN predictions
@@ -126,10 +134,7 @@ class RunTranscriptionJob:
         return self.cnn_prediction[0][0]  # Between 0 and 1
 
     def predict_ensemble(self):
-        p_rnn = self.rnn_prediction()
-        p_cnn = self.cnn_prediction()
+        p_rnn = self.predict_rnn()
+        p_cnn = self.predict_cnn()
         self.ensemble_prediction = np.mean([p_rnn, p_cnn])
         return self.ensemble_prediction
-
-
-

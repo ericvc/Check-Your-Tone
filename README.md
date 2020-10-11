@@ -1,6 +1,8 @@
 Check Your Tone: A Speech-to-Text Sentiment Analyzer for Raspberry Pi
 ================
 
+![](config/pi.jpg)
+
 Introduction
 ------------
 

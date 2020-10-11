@@ -8,6 +8,8 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+![](config/pi.jpg)
+
 ## Introduction
 
 The **Check Your Tone** project is an attempt to create a near real-time speech-to-text sentinment analyzer. A mix of technologies underlie the project including (1) the Amazon Transcribe web service for automatic speech recognition, (2) Keras/TensorFlow for training a neural net text sentiment classifier, and (3) Raspberry Pi for audio data collection and software management.

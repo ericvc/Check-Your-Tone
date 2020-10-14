@@ -10,7 +10,7 @@ from keras import layers
 from keras.optimizers import Adam
 from keras.regularizers import L1L2
 from datetime import datetime
-from preprocessing import pre_process_sentence
+from py.preprocessing import pre_process_sentence
 
 
 # ## Read in data set used for TRAINING
@@ -50,7 +50,7 @@ from preprocessing import pre_process_sentence
 
 
 ## Shuffle rows to mix positive and negative reviews
-df = pd.read_csv("data/imdb_reviews_labeled.csv").sample(frac=1)
+df = pd.read_csv("data/imdb_reviews_labeled.csv").sample(frac=1, random_state=222)
 sentences = df['sentence.lower'].values
 y = df['label'].values
 
@@ -71,8 +71,8 @@ pickle.dump(tokenizer, open(filename, 'wb'))
 
 
 ## Dimensions for word embeddings
-maxlen = 100
-embedding_dim = 50
+maxlen = 150
+embedding_dim = 100
 
 
 ## Pad sequences (right side only) with 0s
@@ -111,7 +111,7 @@ print(f"{int(np.round(nonzero_elements / vocab_size, 2) * 100)}% of words are in
 
 ## Model template functions
 # RNN
-def create_lstm_model(learn_rate: float = 0.001, units: int = 32, neurons: int=32):
+def create_lstm_model(learn_rate: float = 0.001, units: int = 32, n_blocks: int=5):
     # Define optimization settings
     optimizer = Adam(lr=learn_rate)
 
@@ -122,10 +122,10 @@ def create_lstm_model(learn_rate: float = 0.001, units: int = 32, neurons: int=3
     model.add(layers.Embedding(vocab_size, embedding_dim,
                                weights=[embedding_matrix],
                                input_length=maxlen,
-                               trainable=True))
+                               trainable=False))
 
     # Add LSTM blocks
-    for blocks in range(5):
+    for blocks in range(n_blocks):
         label = str(blocks)
         model.add(layers.LSTM(units=units, name="lstm_"+label, return_sequences=True))
         model.add(layers.BatchNormalization(name="batch_norm_"+label))
@@ -153,7 +153,7 @@ def create_lstm_model(learn_rate: float = 0.001, units: int = 32, neurons: int=3
 
 
 # CNN
-def create_conv_model(learn_rate: float = 0.001, filters: int = 32):
+def create_conv_model(learn_rate: float = 0.001, filters: int = 32, n_blocks: int=5):
     # Define optimization settings
     optimizer = Adam(lr=learn_rate)
 
@@ -164,10 +164,10 @@ def create_conv_model(learn_rate: float = 0.001, filters: int = 32):
     model.add(layers.Embedding(vocab_size, embedding_dim,
                                weights=[embedding_matrix],
                                input_length=maxlen,
-                               trainable=True))
+                               trainable=False))
 
     # Add convolution blocks
-    for blocks in range(6):
+    for blocks in range(n_blocks):
         label = str(blocks)
         model.add(layers.Conv1D(filters=filters,
                                 kernel_size=3,
@@ -188,7 +188,10 @@ def create_conv_model(learn_rate: float = 0.001, filters: int = 32):
     model.add(layers.Activation("relu", name="activation_final_block"))
 
     # Dropout layer
-    model.add(layers.Dropout(0.5, name="dropout"))
+    model.add(layers.Flatten())
+    model.add(layers.Dropout(0.5, name="dropout1"))
+    model.add(layers.Dense(32, activation='relu', name="dense"))
+    model.add(layers.Dropout(0.5, name="dropout2"))
 
     # Output layer
     model.add(layers.Dense(1, activation='sigmoid', name="output"))
@@ -228,26 +231,27 @@ def create_conv_model(learn_rate: float = 0.001, filters: int = 32):
 
 ## Model Fitting
 # CNN
-model = create_conv_model(filters=32, learn_rate=0.001)
-model.fit(X, y, batch_size=16, epochs=15, validation_split=0.5)
+cnn_model = create_conv_model(filters=16, learn_rate=1e-4, n_blocks=1)
+cnn_model.fit(X, y, batch_size=8, epochs=35, validation_split=0.5, shuffle=True)
 # Save as SavedModel
-save_model_file = "TensorFlow Models/model_fit_conv_{:%Y%m%d_%H%M%S}".format(datetime.now())
-model.save(filepath=save_model_file, overwrite=True, include_optimizer=True, save_format=None)
+cnn_save_model_file = "TensorFlow Models/model_fit_conv_{:%Y%m%d_%H%M%S}".format(datetime.now())
+cnn_model.save(filepath=cnn_save_model_file, overwrite=True, include_optimizer=True, save_format=None)
 # Convert to TF-Lite model and save
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-model_conv_lite = converter.convert()
-open("TensorFlow Models/conv_sentiment_classifier.tflite", "wb").write(model_conv_lite)
+cnn_converter = tf.lite.TFLiteConverter.from_keras_model(cnn_model)
+cnn_model_conv_lite = cnn_converter.convert()
+open("TensorFlow Models/conv_sentiment_classifier.tflite", "wb").write(cnn_model_conv_lite)
+
 
 # RNN
-model = create_lstm_model(units=32, learn_rate=0.001)
-model.fit(X, y, batch_size=16, epochs=15, validation_split=0.5)
+rnn_model = create_lstm_model(units=32, learn_rate=1e-3, n_blocks=1)  # 25,505 trainable parameters
+rnn_model.fit(X, y, batch_size=16, epochs=15, validation_split=0.5, shuffle=True)
 # Save as SavedModel
-save_model_file = "TensorFlow Models/model_fit_lstm_{:%Y%m%d_%H%M%S}".format(datetime.now())
-model.save(filepath=save_model_file, overwrite=True, include_optimizer=True, save_format=None)
+rnn_save_model_file = "TensorFlow Models/model_fit_rnn_{:%Y%m%d_%H%M%S}".format(datetime.now())
+rnn_model.save(filepath=rnn_save_model_file, overwrite=True, include_optimizer=True, save_format=None)
 # Convert to TF-Lite model and save
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-model_conv_lite = converter.convert()
-open("TensorFlow Models/lstm_sentiment_classifier.tflite", "wb").write(model_conv_lite)
+rnn_converter = tf.lite.TFLiteConverter.from_keras_model(rnn_model)
+rnn_model_conv_lite = rnn_converter.convert()
+open("TensorFlow Models/lstm_sentiment_classifier.tflite", "wb").write(rnn_model_conv_lite)
 
 
 # ## EXAMPLE CODE: Load model for use on new data

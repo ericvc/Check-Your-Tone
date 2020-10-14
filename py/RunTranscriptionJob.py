@@ -10,10 +10,6 @@ import pickle
 from keras.preprocessing.sequence import pad_sequences
 
 
-## Suppress warnings from numpy
-np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning)  
-
-
 ## AWS Authentication Settings
 with open("/home/pi/Projects/Check-Your-Tone/amazon_tokens.json") as f:
     keys = json.load(f)
@@ -24,6 +20,7 @@ AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
 
 class RunTranscriptionJob:
     def __init__(self, bucket_name, file_name):
+        self.file_name = file_name
         self.job_uri = f'https://{bucket_name}.s3.us-west-1.amazonaws.com/{file_name}'
         self.job_name = 'check_your_tone_{:%Y%m%d_%H%M%S}'.format(datetime.utcnow())
         self.load_tokenizer()
@@ -38,7 +35,7 @@ class RunTranscriptionJob:
         # Convert text to tokenized vector
         X_processed = pre_process_sentence([self.transcript.lower()])
         X_tokenized = self.tokenizer.texts_to_sequences(X_processed)
-        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=100)
+        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=150)
         self.transcript_tokenized = np.array(X_padded, dtype=np.float32)
 
     def get_transcript(self):
@@ -54,10 +51,9 @@ class RunTranscriptionJob:
                                   region_name='us-west-1')
 
         # Run job
-        file_format = file_name.split(".")[1]
         transcribe.start_transcription_job(TranscriptionJobName=self.job_name,
                                            Media={'MediaFileUri': self.job_uri},
-                                           MediaFormat=file_format,
+                                           MediaFormat='mp3',
                                            LanguageCode='en-US')
 
         # Check job status
@@ -74,6 +70,7 @@ class RunTranscriptionJob:
                 data = json.loads(response.read())
                 self.transcript = data['results']['transcripts'][0]['transcript']
                 self.tokenize_transcript()
+                print("\n")
                 print(self.transcript)
                 break
 
@@ -127,6 +124,6 @@ class RunTranscriptionJob:
         return pred[0][0]  # Between 0 and 1
 
     def predict_ensemble(self):
-        self.cnn_prediction = self.predict(model_name="cnn")
-        self.rnn_prediction = self.predict(model_name="rnn")
-        return float(self.cnn_prediction), float(self.rnn_prediction)
+        self.cnn_prediction = float(self.predict(model_name="cnn"))
+        self.rnn_prediction = float(self.predict(model_name="rnn"))
+        return self.cnn_prediction, self.rnn_prediction

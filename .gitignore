@@ -5,3 +5,7 @@ amazon_tokens.json
 media
 README.Rmd
 __pycache__
+
+.Rhistory
+
+check_your_tone_test.py

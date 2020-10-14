@@ -7,10 +7,6 @@ import json
 from py.upload_to_aws import upload_to_aws
 
 
-## Suppress warnings from numpy
-np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning) 
-
-
 ## GPIO pin settings
 PUSH_BUTTON = 8
 INDICATOR_LED = 36
@@ -27,6 +23,13 @@ GPIO.setup(INDICATOR_LED, GPIO.OUT)  # Status indicator LED output
 GPIO.setup(NEGATIVE_LED, GPIO.OUT)  # LED output (negative)
 GPIO.setup(NEUTRAL_LED, GPIO.OUT)  # LED output (neutral)
 GPIO.setup(POSITIVE_LED, GPIO.OUT)  # LED output (positive)
+
+
+## UI Settings
+# Console window size
+width = os.get_terminal_size().columns
+# Indicator LED on
+GPIO.output(INDICATOR_LED, True)
 
 
 ## Detect when tactile button is pressed, run function when it is
@@ -57,7 +60,7 @@ def turn_led_on(LED: int, length: float=10.0):
 
 
 ## Record audio and save to local storage
-def record_audio():
+def record_audio(rlen: int=25):
     """
     :param channel: GPIO pin connected to an LED.
     :return: Nothing is returned.
@@ -67,9 +70,7 @@ def record_audio():
     GPIO.remove_event_detect(PUSH_BUTTON)
     
     # Turn on recording indicator LED
-    GPIO.output(NEUTRAL_LED, True)
     GPIO.output(NEGATIVE_LED, True)
-    GPIO.output(POSITIVE_LED, True)
     
     print("Recording started...\n")
 
@@ -78,17 +79,14 @@ def record_audio():
     file_name = f"audio_recording_{np.round(time.time(), 3)}".replace(".","_")
     file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}"
     bucket_name = "checkyourtoneproject"
-    rlen = 15  # length of recording
-    bit_rate = 192 # MP3 encoding bit rate
+    bit_rate = 96 # MP3 encoding bit rate
     cmd = f"arecord -f cd -t raw -d {rlen} -D plughw:2,0 | lame -r -b {bit_rate} - {file_path}.{frmt}"
     os.system(cmd)
 
     print("\nRecording ended...\n\nUploading audio file to AWS.\n")
 
     # Turn off recording indicator LED
-    GPIO.output(NEUTRAL_LED, False)
     GPIO.output(NEGATIVE_LED, False)
-    GPIO.output(POSITIVE_LED, False)
     
     # Re-enable event detection
     event_listener()
@@ -106,12 +104,16 @@ def task_handler():
     
     # Get audio recording and upload to AWS project bucket"
     bucket_name, file_name = record_audio()
-    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}.wav"
+    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}.mp3"
     upload_to_aws(bucket_name=bucket_name, file_path=file_path, s3_file_name=file_name)
+    os.system(f"rm {file_path}") # Delete file on local storage
 
-    # Get transcript from AWS
+    # Get transcript from AWS - show light to indicate task is underway
+    GPIO.output(NEUTRAL_LED, True)
     transcript = RunTranscriptionJob(bucket_name=bucket_name, file_name=file_name)
     transcript.get_transcript()
+    GPIO.output(NEUTRAL_LED, False)
+    time.sleep(1)
 
     # Predict sentiment
     y_cnn, y_rnn = transcript.predict_ensemble()
@@ -126,16 +128,19 @@ def task_handler():
     if predicted_sentiment <= 0.33:
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"NEGATIVE")
+        print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
         turn_led_on(NEGATIVE_LED)
 
     elif 0.33 < predicted_sentiment <= 0.67:
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"NEUTRAL")
+        print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
         turn_led_on(NEUTRAL_LED)
 
     else:
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"POSITIVE")
+        print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
         turn_led_on(POSITIVE_LED)
 
 
@@ -144,13 +149,9 @@ event_listener()
 
 
 try:
-    # Main program loop
     while True:
-        GPIO.output(INDICATOR_LED, True)
-        time.sleep(7.0)
-        GPIO.output(INDICATOR_LED, True)
-        time.sleep(0.5)
-        
+        continue
+
 except KeyboardInterrupt:
     print("Check Your Tone! closed using keyboard exit command.")
 
@@ -158,4 +159,6 @@ except:
     print("An error has occurred.")
 
 finally:
+    # Indicator LED off
+    GPIO.output(INDICATOR_LED, False)
     GPIO.cleanup()  # Clean program exit

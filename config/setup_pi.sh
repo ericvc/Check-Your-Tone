@@ -94,7 +94,7 @@ sudo apt-get -y install RPI.GPIO
 pip3 install -r "${PROJDIR}/${PROJNAME}/requirements.txt"
 
 # Download datasets
-python3 "${PROJDIR}/${PROJNAME}/config/dl_stopwords.py"
+python3 "${PROJDIR}/${PROJNAME}/py/dl_stopwords.py"
 
 
 #################################################################################
@@ -115,7 +115,7 @@ aws --version
 #################################################################################
 
 # Move shutdown button script
-sudo cp "${PROJDIR}/${PROJNAME}/config/shutdown_button.py" /etc/init.d/
+sudo cp "${PROJDIR}/${PROJNAME}/py/shutdown_button.py" /etc/init.d/
 sudo chmod +x /etc/init.d/shutdown_button.py
 sudo update-rc.d shutdown_button.py defaults
 

@@ -80,10 +80,9 @@ class ToneChecker:
         return self.cnn_prediction[0][0]  # Between 0 and 1
 
     def predict_ensemble(self):
-        p_rnn = self.predict_rnn()
-        p_cnn = self.predict_cnn()
-        self.ensemble_prediction = np.mean([p_rnn, p_cnn])
-        return self.ensemble_prediction
+        p_rnn = float(self.predict_rnn())
+        p_cnn = float(self.predict_cnn())
+        return p_cnn, p_rnn
 
 
 # Load word tokenizer
@@ -101,14 +100,19 @@ try:
 
         text = input("Enter some text: ")
         tc = ToneChecker(text, tokenizer=tokenizer)
-        predicted_sentiment = np.round(tc.predict_ensemble(),2)
+        p_cnn, p_rnn = tc.predict_ensemble()
+        y_pred = np.mean([p_cnn, p_rnn])
+        predicted_sentiment = np.round(y_pred, 2)
 
         if predicted_sentiment <= 0.33:
             print(f"\nPredicted sentiment score is {predicted_sentiment}: NEGATIVE\n".center(width))
+            print(f"\nCNN MODEL: {np.round(p_cnn,3)}, RNN MODEL: {np.round(p_rnn,3)}".center(width))
         elif 0.33 < predicted_sentiment <= 0.67:
             print(f"\nPredicted sentiment score is {predicted_sentiment}: NEUTRAL\n".center(width))
+            print(f"\nCNN MODEL: {np.round(p_cnn,3)}, RNN MODEL: {np.round(p_rnn,3)}".center(width))
         else:
             print(f"\nPredicted sentiment score is {predicted_sentiment}: POSITIVE\n".center(width))
+            print(f"\nCNN MODEL: {np.round(p_cnn,3)}, RNN MODEL: {np.round(p_rnn,3)}".center(width))
 
 
 except KeyboardInterrupt:

@@ -25,7 +25,7 @@ GPIO.setup(NEUTRAL_LED, GPIO.OUT)  # LED output (neutral)
 GPIO.setup(POSITIVE_LED, GPIO.OUT)  # LED output (positive)
 
 
-## UI Settings
+## UX Settings
 # Console window size
 width = os.get_terminal_size().columns
 # Indicator LED on
@@ -34,6 +34,7 @@ GPIO.output(INDICATOR_LED, True)
 
 ## Detect when tactile button is pressed, run function when it is
 def event_listener():
+
     GPIO.add_event_detect(PUSH_BUTTON,
                           GPIO.FALLING,
                           callback=lambda x: task_handler(),
@@ -41,19 +42,21 @@ def event_listener():
     
     
 ## LED control function
-def turn_led_on(LED: int, length: float=10.0):
+def turn_led_on(LED: int, length: float=10.0, blinks: int=2):
+
     """
     :param LED: GPIO pin connected to a diode
     :param length: Time to keep on, in seconds.
     :return: Nothing is returned
     """
+
     GPIO.output(LED, True)
     time.sleep(length)
     GPIO.output(LED, False)
     time.sleep(1)
 
     # Blink two times to indicate that the program is resetting
-    for cycle in range(2):
+    for cycle in range(blinks):
         GPIO.output(LED, True)
         time.sleep(0.25)
         GPIO.output(LED, False)
@@ -61,6 +64,7 @@ def turn_led_on(LED: int, length: float=10.0):
 
 ## Record audio and save to local storage
 def record_audio(rlen: int=25):
+
     """
     :param channel: GPIO pin connected to an LED.
     :return: Nothing is returned.
@@ -96,9 +100,11 @@ def record_audio(rlen: int=25):
 
 ## Function called by the event watcher when an edge event is detected
 def task_handler():
+
     """
     :return: Nothing is returned.
     """
+
     # Start time
     start_time = time.time()
     
@@ -126,18 +132,21 @@ def task_handler():
 
     # Report status
     if predicted_sentiment <= 0.33:
+
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"NEGATIVE")
         print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
         turn_led_on(NEGATIVE_LED)
 
     elif 0.33 < predicted_sentiment <= 0.67:
+
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"NEUTRAL")
         print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
         turn_led_on(NEUTRAL_LED)
 
     else:
+
         print(f"{task_id} - {task_time} secs - Predicted sentiment score is {predicted_sentiment}: "
               f"POSITIVE")
         print(f"\nCNN MODEL: {np.round(y_cnn,3)}, RNN MODEL: {np.round(y_rnn,3)}".center(width))
@@ -149,16 +158,21 @@ event_listener()
 
 
 try:
+
     while True:
+
         continue
 
 except KeyboardInterrupt:
+
     print("Check Your Tone! closed using keyboard exit command.")
 
 except:
+
     print("An error has occurred.")
 
 finally:
+
     # Indicator LED off
     GPIO.output(INDICATOR_LED, False)
     GPIO.cleanup()  # Clean program exit

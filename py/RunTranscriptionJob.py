@@ -19,6 +19,7 @@ AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
 
 
 class RunTranscriptionJob:
+
     def __init__(self, bucket_name, file_name):
         self.file_name = file_name
         self.job_uri = f'https://{bucket_name}.s3.us-west-1.amazonaws.com/{file_name}'
@@ -28,9 +29,11 @@ class RunTranscriptionJob:
         self.load_cnn()
 
     def load_tokenizer(self):
+
         self.tokenizer = pickle.load(open("tokenizer/sentence_tokenizer_fitted.sav", 'rb'))
 
     def tokenize_transcript(self):
+
         assert self.transcript
         # Convert text to tokenized vector
         X_processed = pre_process_sentence([self.transcript.lower()])
@@ -39,6 +42,7 @@ class RunTranscriptionJob:
         self.transcript_tokenized = np.array(X_padded, dtype=np.float32)
 
     def get_transcript(self):
+
         """
         Initialize AWS client and get transcription from uploaded audio file. First, the remote task is initialized.
         Once complete, the text and metadata can be downloaded in JSON format.
@@ -62,10 +66,12 @@ class RunTranscriptionJob:
             counter += 1
             status = transcribe.get_transcription_job(TranscriptionJobName=self.job_name)
             if status['TranscriptionJob']['TranscriptionJobStatus'] == "FAILED":
+
                 print("Transcription failed.")
                 break
 
             elif status['TranscriptionJob']['TranscriptionJobStatus'] == 'COMPLETED':
+
                 response = urllib.request.urlopen(status['TranscriptionJob']['Transcript']['TranscriptFileUri'])
                 data = json.loads(response.read())
                 self.transcript = data['results']['transcripts'][0]['transcript']
@@ -75,11 +81,13 @@ class RunTranscriptionJob:
                 break
 
             else:
+
                 if counter % 10 == 0:
                     print("Transcript is not ready...")
                 time.sleep(1)
 
     def load_rnn(self):
+
         """
         Loads RNN saved as a TensorFLow Lite model.
         """
@@ -89,6 +97,7 @@ class RunTranscriptionJob:
         self.rnn_model.allocate_tensors()
 
     def load_cnn(self):
+        
         """
         Loads RNN saved as a TensorFLow Lite model.
         """
@@ -96,6 +105,7 @@ class RunTranscriptionJob:
         self.cnn_model = tf.lite.Interpreter("TensorFlow Models/conv_sentiment_classifier.tflite")
 
     def predict(self, model_name: str):
+
         """
         From the transcript returned by AWS, convert raw text to tokenized vector, and predict sentiment from the
         trained model.
@@ -124,6 +134,7 @@ class RunTranscriptionJob:
         return pred[0][0]  # Between 0 and 1
 
     def predict_ensemble(self):
+
         self.cnn_prediction = float(self.predict(model_name="cnn"))
         self.rnn_prediction = float(self.predict(model_name="rnn"))
         return self.cnn_prediction, self.rnn_prediction

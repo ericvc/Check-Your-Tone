@@ -1,0 +1,14 @@
+[Unit]
+Description=CYT Record Button
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u check_your_tone.py
+WorkingDirectory=/home/pi/Projects/Check-Your-Tone
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

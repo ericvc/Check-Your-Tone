@@ -114,17 +114,16 @@ aws --version
 # Install Shutdown Button Script
 #################################################################################
 
-# Move shutdown button script
-sudo cp "${PROJDIR}/${PROJNAME}/py/shutdown_button.py" /etc/init.d/
-sudo chmod +x /etc/init.d/shutdown_button.py
-sudo update-rc.d shutdown_button.py defaults
+# Move shutdown button script to systemd directory
+sudo cp "${PROJDIR}/${PROJNAME}/config/shutdown_button.service" /etc/systemd/system/shutdown_button.service
+sudo systemctl enable shutdown_button.service  # Run at startup
 
 
 #################################################################################
 # Configure Microphone and Speaker Settings (may require additional tweaking)
 #################################################################################
 
-# Move shutdown button script
+# Move audio settings file to home directory
 sudo cp "${PROJDIR}/${PROJNAME}/config/.asoundrc" "${HOMEDIR}"
 sudo chmod +x /home/pi/.asoundrc
 
@@ -136,10 +135,9 @@ sudo chmod +x /home/pi/.asoundrc
 # Clone project repository to local storage
 git clone https://github.com/ericvc/Check-Your-Tone "${PROJDIR}/${PROJNAME}"
 
-# Configure program script to run at startup
-sudo cp "${PROJDIR}/${PROJNAME}/check_your_tone.py" /etc/init.d/
-sudo chmod +x /etc/init.d/check_your_tone.py
-sudo update-rc.d check_your_tone.py defaults
+# Configure to run at startup
+sudo cp "${PROJDIR}/${PROJNAME}/config/cyt_record_button.service" /etc/systemd/system/cyt_record_button.service
+sudo systemctl enable cyt_record_button.service  # Run at startup
 
 
 #################################################################################
@@ -155,6 +153,7 @@ sudo apt-get install -y sox
 
 # FFmpeg (may take some time to download and compile)
 sudo bash "${PROJDIR}/${PROJNAME}/config/ffmpeg_install.sh"
+pip3 install ffmpeg-normalize
 
 
 #################################################################################
@@ -164,7 +163,11 @@ sudo bash "${PROJDIR}/${PROJNAME}/config/ffmpeg_install.sh"
 # Once installed, connect to this device using a remote desktop client
 
 # Install
-#sudo apt-get install -y xrdp
+#sudo apt install realvnc-vnc-server realvnc-vnc-viewer
+
+# Manually enable VNC connections
+#echo "Be sure to manually enable VNC"
+#sudo raspi-config
 
 # Get local IP address
 #hostname -I 

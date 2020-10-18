@@ -135,9 +135,12 @@ sudo chmod +x /home/pi/.asoundrc
 # Clone project repository to local storage
 git clone https://github.com/ericvc/Check-Your-Tone "${PROJDIR}/${PROJNAME}"
 
-# Configure to run at startup
-sudo cp "${PROJDIR}/${PROJNAME}/config/cyt_record_button.service" /etc/systemd/system/cyt_record_button.service
-sudo systemctl enable cyt_record_button.service  # Run at startup
+# # Configure to run at startup
+# sudo cp "${PROJDIR}/${PROJNAME}/config/cyt_record_button.service" /etc/systemd/system/cyt_record_button.service
+# sudo systemctl enable cyt_record_button.service  # Run at startup
+
+# Add icon to desktop
+sudo cp "${PROJDIR}/${PROJNAME}/config/cyt.desktop" "${HOMEDIR}/Desktop/cyt.desktop" 
 
 
 #################################################################################

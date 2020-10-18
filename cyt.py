@@ -44,8 +44,9 @@ def turn_led_on(LED: int, length: float=10.0, blinks: int=2):
         GPIO.output(LED, False)
 
 
-# Console window width
+## Console window width
 width = os.get_terminal_size().columns
+
 
 print("CHECK YOUR TONE! - Text Sentiment Analysis\nReturns score between 0 (negative) and 1 (positive)\n".center(width))
 
@@ -54,7 +55,7 @@ try:
     # Main program loop
     while True:
 
-        text = input("Enter some text: ")
+        text = sys.argv[1]
         tc = TextToneChecker(text)
         p_cnn, p_rnn = tc.predict_ensemble()
         y_pred = np.mean([p_cnn, p_rnn])

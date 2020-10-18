@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Check Your Tone
+Icon=volume-knob
+Type=Application
+Path=/home/pi/Projects/Check-Your-Tone
+Exec=python3 check_your_tone.py
+Terminal=true
+Name[en_US]=cyt.desktop

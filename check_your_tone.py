@@ -4,7 +4,6 @@ import time
 import numpy as np
 from py.RunTranscriptionJob import RunTranscriptionJob
 import json
-from py.upload_to_aws import upload_to_aws
 
 
 ## GPIO pin settings
@@ -23,6 +22,14 @@ GPIO.setup(INDICATOR_LED, GPIO.OUT)  # Status indicator LED output
 GPIO.setup(NEGATIVE_LED, GPIO.OUT)  # LED output (negative)
 GPIO.setup(NEUTRAL_LED, GPIO.OUT)  # LED output (neutral)
 GPIO.setup(POSITIVE_LED, GPIO.OUT)  # LED output (positive)
+
+
+## AWS Authentication Settings
+with open("/home/pi/Projects/Check-Your-Tone/amazon_tokens.json") as f:
+    keys = json.load(f)
+
+AWS_ACCESS_KEY_ID = keys["ACCESS"]
+AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
 
 
 ## UX Settings
@@ -110,13 +117,15 @@ def task_handler():
     
     # Get audio recording and upload to AWS project bucket"
     bucket_name, file_name = record_audio()
-    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}.mp3"
-    upload_to_aws(bucket_name=bucket_name, file_path=file_path, s3_file_name=file_name)
-    os.system(f"rm {file_path}") # Delete file on local storage
+    file_path = f"/home/pi/Projects/Check-Your-Tone/audio/{file_name}.mp3"   
 
     # Get transcript from AWS - show light to indicate task is underway
     GPIO.output(NEUTRAL_LED, True)
-    transcript = RunTranscriptionJob(bucket_name=bucket_name, file_name=file_name)
+    transcript = RunTranscriptionJob(bucket_name=bucket_name, 
+                                    file_name=file_name, 
+                                    az_key=AWS_ACCESS_KEY_ID, 
+                                    az_secret=AWS_SECRET_ACCESS_KEY)
+    transcript.run_parallel()  # Executes two functions (upload and model loading) in parallel to save time
     transcript.get_transcript()
     GPIO.output(NEUTRAL_LED, False)
     time.sleep(1)

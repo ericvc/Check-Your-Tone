@@ -1,4 +1,5 @@
 import boto3
+from botocore.exceptions import NoCredentialsError
 import time
 import urllib
 import json
@@ -8,29 +9,62 @@ import numpy as np
 from py.preprocessing import pre_process_sentence
 import pickle
 from keras.preprocessing.sequence import pad_sequences
-
-
-## AWS Authentication Settings
-with open("/home/pi/Projects/Check-Your-Tone/amazon_tokens.json") as f:
-    keys = json.load(f)
-
-AWS_ACCESS_KEY_ID = keys["ACCESS"]
-AWS_SECRET_ACCESS_KEY = keys["ACCESS_SECRET"]
+from multiprocessing import Process
+import os
 
 
 class RunTranscriptionJob:
 
-    def __init__(self, bucket_name, file_name):
+    def __init__(self, bucket_name, file_name, file_path, az_key, az_secret):
         self.file_name = file_name
+        self.file_path = file_path
+        self.bucket_name = bucket_name
         self.job_uri = f'https://{bucket_name}.s3.us-west-1.amazonaws.com/{file_name}'
         self.job_name = 'check_your_tone_{:%Y%m%d_%H%M%S}'.format(datetime.utcnow())
+        self.az_key = az_key
+        self.az_secret = az_secret
         self.load_tokenizer()
-        self.load_rnn()
-        self.load_cnn()
+
+
+    ## Run parallel processes
+    def run_parallel(self):
+        functions = [self.load_models, self.upload_to_aws]
+        proc = []
+        for fxn in functions:
+            p = Process(target=fxn)
+            p.start()
+            proc.append(p)
+        for p in proc:
+            p.join()
+
+
+    ## Function to upload files to AWS bucket using Boto3 client
+    def upload_to_aws(self):
+        
+        s3 = boto3.client("s3", aws_access_key_id=self.az_key, aws_secret_access_key=self.az_secret)
+        
+        try:
+
+            task_start = time.time()
+            s3.upload_file(self.file_path, self.bucket_name, self.file_name)
+            task_completion_time = np.round(time.time() - task_start, 1)
+            print(f"Upload completed in {task_completion_time} seconds.\n")
+            os.system(f"rm {self.file_path}") # Delete file on local storage
+            return True
+        
+        except FileNotFoundError:
+            print("No file was found.")
+            return False
+        
+        except NoCredentialsError:
+            print("Error establishing credentials with AWS.")
+            return False
+
 
     def load_tokenizer(self):
 
         self.tokenizer = pickle.load(open("tokenizer/sentence_tokenizer_fitted.sav", 'rb'))
+
 
     def tokenize_transcript(self):
 
@@ -41,6 +75,7 @@ class RunTranscriptionJob:
         X_padded = pad_sequences(X_tokenized, padding='post', maxlen=150)
         self.transcript_tokenized = np.array(X_padded, dtype=np.float32)
 
+
     def get_transcript(self):
 
         """
@@ -50,8 +85,8 @@ class RunTranscriptionJob:
         """
         # Create client
         transcribe = boto3.client('transcribe',
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                                  aws_access_key_id=self.az_key,
+                                  aws_secret_access_key=self.az_secret,
                                   region_name='us-west-1')
 
         # Run job
@@ -63,6 +98,7 @@ class RunTranscriptionJob:
         # Check job status
         counter = 0
         while True:
+            
             counter += 1
             status = transcribe.get_transcription_job(TranscriptionJobName=self.job_name)
             if status['TranscriptionJob']['TranscriptionJobStatus'] == "FAILED":
@@ -86,23 +122,16 @@ class RunTranscriptionJob:
                     print("Transcript is not ready...")
                 time.sleep(1)
 
-    def load_rnn(self):
+
+    def load_models(self):
 
         """
         Loads RNN saved as a TensorFLow Lite model.
         """
-        # Load model from file and allocate tensors
-        self.rnn_model = tf.lite.Interpreter("TensorFlow Models/lstm_sentiment_classifier.tflite")
-        # Allocate memory for model input tensors
-        self.rnn_model.allocate_tensors()
-
-    def load_cnn(self):
-        
-        """
-        Loads RNN saved as a TensorFLow Lite model.
-        """
-        # Load model from file and allocate tensors
+        # Load models from TF lite files
         self.cnn_model = tf.lite.Interpreter("TensorFlow Models/conv_sentiment_classifier.tflite")
+        self.rnn_model = tf.lite.Interpreter("TensorFlow Models/lstm_sentiment_classifier.tflite")
+        
 
     def predict(self, model_name: str):
 
@@ -132,6 +161,7 @@ class RunTranscriptionJob:
         model.invoke()
         pred = model.get_tensor(output_details[0]['index'])
         return pred[0][0]  # Between 0 and 1
+
 
     def predict_ensemble(self):
 

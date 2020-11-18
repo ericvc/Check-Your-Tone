@@ -21,21 +21,11 @@ class RunTranscriptionJob:
         self.bucket_name = bucket_name
         self.job_uri = f'https://{bucket_name}.s3.us-west-1.amazonaws.com/{file_name}'
         self.job_name = 'check_your_tone_{:%Y%m%d_%H%M%S}'.format(datetime.utcnow())
+        self.file_to_upload = f"{self.file_path}{self.file_name}.mp3"
         self.az_key = az_key
         self.az_secret = az_secret
         self.load_tokenizer()
-
-
-    ## Run parallel processes
-    def run_parallel(self):
-        functions = [self.load_models, self.upload_to_aws]
-        proc = []
-        for fxn in functions:
-            p = Process(target=fxn)
-            p.start()
-            proc.append(p)
-        for p in proc:
-            p.join()
+        self.load_models()
 
 
     ## Function to upload files to AWS bucket using Boto3 client
@@ -46,10 +36,10 @@ class RunTranscriptionJob:
         try:
 
             task_start = time.time()
-            s3.upload_file(self.file_path, self.bucket_name, self.file_name)
+            s3.upload_file(self.file_to_upload, self.bucket_name, self.file_name)
             task_completion_time = np.round(time.time() - task_start, 1)
             print(f"Upload completed in {task_completion_time} seconds.\n")
-            os.system(f"rm {self.file_path}") # Delete file on local storage
+            os.system(f"rm {self.file_to_upload}") # Delete file on local storage
             return True
         
         except FileNotFoundError:
@@ -72,7 +62,7 @@ class RunTranscriptionJob:
         # Convert text to tokenized vector
         X_processed = pre_process_sentence([self.transcript.lower()])
         X_tokenized = self.tokenizer.texts_to_sequences(X_processed)
-        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=150)
+        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=250)
         self.transcript_tokenized = np.array(X_padded, dtype=np.float32)
 
 

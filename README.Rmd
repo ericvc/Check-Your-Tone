@@ -45,15 +45,13 @@ python cyt.py
 
 ### Speech-to-Text Sentiment Analysis
 
-Coming soon
+Once an audio recording has been transcribed to text, using AWS Transcribe, the sentiment of the resulting transcript is estimated by two neural network models, which were each trained on the [IMDB Movie Reviews Data Set](https://ai.stanford.edu/~amaas/data/sentiment/) of over 50,000 user reviews. Training on this binary classification data set allows the neural network models to distinguish between "positive" and "negative" tone, and ultimately gives each new text sample a score between 0 (negative) and 1 (positive) indicating the overall sentiment. This task is also made possible thanks to the pre-trained word embeddings provided by the [GloVe project](https://nlp.stanford.edu/projects/glove/), which is based on a corpus of text scraped from sites across the web. The neural network models I used here are two architectures that are each well-suited and widely used for time-series data and text classification: a recurrent neural network (RNN) and one-dimensional convolutional neural network (CNN). The output scores of each model are averaged together in order to make an *ensemble prediction* about the sentiment of a text sample. 
 
-## Future Directions
+To prepare training/validation data sets, create word embeddings, and train the models, I opted to use a Google Colaboratory hosted runtime, primarily for access to high-end GPUs, which greatly improve the speed of training the models, and for easy integration of cloud file storage. I have included in this repository a copy of my Colab notebook (`py/sentiment_classifier_training.ipynb`), which should make it easy to reproduce my results or modify them for other purposes. The Colab notebook can also be accessed from your browser [here](https://colab.research.google.com/drive/1YzP5I5b3PTRIVaXC0HPBxC_oWMpByZdo?usp=sharing).
 
-* A complete guide with step-by-step directions for building the project.
-* Downloadable disk image with all software files and dependencies pre-configured.
+**An overview of the neural network architectures used for this project, RNN (left) and CNN (right):**
 
-## Feature Ideas
-
-* Indicator LED should blink while fetching ASR transcript. Might need to use `asyncio`.
-* Use word sentiment lexicon to identify the valence of individual words returned in the transcript.
-* Record audio as long as tactile button is held (combining numerous small files)
+<p float="left">
+  <img src="TensorFlow Models/rnn_model.png" width="300" />
+  <img src="TensorFlow Models/cnn_model.png" width="300" /> 
+</p>

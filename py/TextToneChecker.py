@@ -25,7 +25,7 @@ class TextToneChecker:
         # Convert text to tokenized vector
         X_processed = pre_process_sentence([self.text.lower()])
         X_tokenized = self.tokenizer.texts_to_sequences(X_processed)
-        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=150)
+        X_padded = pad_sequences(X_tokenized, padding='post', maxlen=250)
         self.text_tokenized = np.array(X_padded, dtype=np.float32)
 
     def load_rnn(self):
@@ -65,7 +65,7 @@ class TextToneChecker:
         # Allocate memory for model input tensors
         model.allocate_tensors()
         # Input vector
-        input_X = self.transcript_tokenized
+        input_X = self.text_tokenized
         # Set input and output tensors
         input_details = model.get_input_details()
         output_details = model.get_output_details()
